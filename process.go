@@ -105,6 +105,10 @@ func (p *SciProcess) SetPathReplace(inPortName string, outPortName string, old s
 	}
 }
 
+func (p *SciProcess) GlobOutputs(outPortName string, pattern string) {
+
+}
+
 // ------- Helper methods for initialization -------
 
 func expandCommandParamsAndPaths(cmd string, params map[string]string, inPaths map[string]string, outPaths map[string]string) (cmdExpr string) {
