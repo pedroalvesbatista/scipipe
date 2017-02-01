@@ -106,7 +106,11 @@ func (p *SciProcess) SetPathReplace(inPortName string, outPortName string, old s
 }
 
 func (p *SciProcess) GlobOutputs(outPortName string, pattern string) {
-
+	for outpName, outp := range p.Out {
+		if p.OutPortsDoGlob[outpName] != nil && p.OutPortsDoGlob[outpName] {
+			// TODO: Implement
+		}
+	}
 }
 
 // ------- Helper methods for initialization -------
