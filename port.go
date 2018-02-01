@@ -14,6 +14,8 @@ type InPort struct {
 	MergedInChan chan *IP
 	inChans      []chan *IP
 	connected    bool
+	Process      WorkflowProcess
+	RemotePort   *OutPort
 }
 
 func NewInPort() *InPort {
@@ -29,6 +31,9 @@ func (localPort *InPort) Connect(remotePort *OutPort) {
 	inBoundChan := make(chan *IP, BUFSIZE)
 	localPort.AddInChan(inBoundChan)
 	remotePort.AddOutChan(inBoundChan)
+
+	localPort.RemotePort = remotePort
+	remotePort.RemotePort = localPort
 
 	localPort.SetConnectedStatus(true)
 	remotePort.SetConnectedStatus(true)
@@ -69,8 +74,10 @@ func (pt *InPort) Recv() *IP {
 
 // OutPort represents an output connection point on Processes
 type OutPort struct {
-	outChans  []chan *IP
-	connected bool
+	outChans   []chan *IP
+	connected  bool
+	Process    WorkflowProcess
+	RemotePort *InPort
 }
 
 func NewOutPort() *OutPort {
@@ -85,6 +92,9 @@ func (localPort *OutPort) Connect(remotePort *InPort) {
 	outBoundChan := make(chan *IP, BUFSIZE)
 	localPort.AddOutChan(outBoundChan)
 	remotePort.AddInChan(outBoundChan)
+
+	localPort.RemotePort = remotePort
+	remotePort.RemotePort = localPort
 
 	localPort.SetConnectedStatus(true)
 	remotePort.SetConnectedStatus(true)
