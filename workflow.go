@@ -40,8 +40,10 @@ func NewWorkflow(name string, maxConcurrentTasks int) *Workflow {
 // Workflow component requires.
 type WorkflowProcess interface {
 	Name() string
-	InPorts() []*InPort
-	OutPorts() []*OutPort
+	InPorts() []*InPort   // TODO: Change to return map instead
+	OutPorts() []*OutPort // TODO: Change to return map instead
+	ParamInPorts() map[string]*ParamInPort
+	ParamOutPorts() map[string]*ParamOutPort
 	IsConnected() bool
 	Run()
 }
@@ -124,6 +126,15 @@ func (wf *Workflow) ConnectLast(outPorts ...*OutPort) {
 	wf.driver = wf.sink
 }
 
+// ConnectLastParamPort works like ConnectLast, but for parameter ports
+func (wf *Workflow) ConnectLastParamPort(paramOutPorts ...*ParamOutPort) {
+	for _, paramOutPort := range paramOutPorts {
+		wf.sink.ConnectParamPort(paramOutPort)
+	}
+	// Make sure the sink is also the driver
+	wf.driver = wf.sink
+}
+
 func (wf *Workflow) readyToRun(procs ...WorkflowProcess) bool {
 	if len(procs) == 0 {
 		Error.Println(wf.name + ": The workflow is empty. Did you forget to add the processes to it?")
@@ -156,6 +167,25 @@ func (wf *Workflow) RunProcs(procs ...WorkflowProcess) {
 						// Disconnect any ports that are connected to processes that will not run0
 						outPort.Disconnect()
 						wf.ConnectLast(outPort)
+					} else {
+						// Connect any unconnected ports also among the processes that are supposed to run
+						for _, port := range remoteProc.OutPorts() {
+							if !port.IsConnected() {
+								wf.ConnectLast(port)
+							}
+						}
+					}
+				}
+			}
+		}
+		for _, paramOutPort := range proc.ParamOutPorts() {
+			if paramOutPort != nil && paramOutPort.RemotePort != nil {
+				remoteProc := paramOutPort.RemotePort.Process
+				if remoteProc != nil {
+					if !inProcs(remoteProc, procs) {
+						// Disconnect any ports that are connected to processes that will not run0
+						paramOutPort.Disconnect()
+						wf.ConnectLastParamPort(paramOutPort)
 					} else {
 						// Connect any unconnected ports also among the processes that are supposed to run
 						for _, port := range remoteProc.OutPorts() {

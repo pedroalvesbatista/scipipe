@@ -8,7 +8,7 @@ import (
 func TestNewProc(t *testing.T) {
 	wf := NewWorkflow("test_wf", 16)
 	p1 := NewProc(wf, "echo", "echo {p:text}")
-	if p1.ParamPort("text") == nil {
+	if p1.ParamInPort("text") == nil {
 		t.Error(`p.ParamPorts("text") = nil. want: not nil`)
 	}
 

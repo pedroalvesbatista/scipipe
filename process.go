@@ -19,6 +19,9 @@ const (
 
 // ================== Process ==================
 
+// Process is the basic components of workflows in SciPipe. Processes are
+// long-running components that schedule and execute tasks based on the input
+// data it receives on its in-ports and parameter in-ports.
 type Process struct {
 	name             string
 	CommandPattern   string
@@ -29,12 +32,14 @@ type Process struct {
 	_outPorts        map[string]*OutPort
 	OutPortsDoStream map[string]bool
 	PathFormatters   map[string]func(*SciTask) string
-	paramPorts       map[string]*ParamPort
+	paramInPorts     map[string]*ParamInPort
 	CustomExecute    func(*SciTask)
 	workflow         *Workflow
 	CoresPerTask     int
 }
 
+// NewProcess instantiates and returns a new Process, with ports and parameter
+// ports initialized based on the command pattern provided in command.
 func NewProcess(workflow *Workflow, name string, command string) *Process {
 	p := &Process{
 		name:             name,
@@ -43,7 +48,7 @@ func NewProcess(workflow *Workflow, name string, command string) *Process {
 		_outPorts:        make(map[string]*OutPort),
 		OutPortsDoStream: make(map[string]bool),
 		PathFormatters:   make(map[string]func(*SciTask) string),
-		paramPorts:       make(map[string]*ParamPort),
+		paramInPorts:     make(map[string]*ParamInPort),
 		Spawn:            true,
 		workflow:         workflow,
 		CoresPerTask:     1,
@@ -54,6 +59,8 @@ func NewProcess(workflow *Workflow, name string, command string) *Process {
 
 // ----------- Main API init methods ------------
 
+// NewProc instantiates a Process, similar to NewProcess() and binds it to the
+// current workflow.
 func NewProc(workflow *Workflow, name string, cmd string) *Process {
 	if !LogExists {
 		InitLogInfo()
@@ -63,6 +70,9 @@ func NewProc(workflow *Workflow, name string, cmd string) *Process {
 	return p
 }
 
+// ShellExpand returns a shell command where the placeholders (of the same type
+// as used when initializing SciPipe processes) is expanded by the concrete
+// values provided in inPath, outPaths and params.
 func ShellExpand(workflow *Workflow, name string, cmd string, inPaths map[string]string, outPaths map[string]string, params map[string]string) *Process {
 	cmdExpr := expandCommandParamsAndPaths(cmd, params, inPaths, outPaths)
 	p := NewProcess(workflow, name, cmdExpr)
@@ -74,6 +84,7 @@ func ShellExpand(workflow *Workflow, name string, cmd string, inPaths map[string
 // Main API methods
 // ------------------------------------------------
 
+// Name Return the name of the process, which it got upon initialization
 func (p *Process) Name() string {
 	return p.name
 }
@@ -82,6 +93,7 @@ func (p *Process) Name() string {
 // In-port stuff
 // ------------------------------------------------
 
+// In returns the in-port with name portName
 func (p *Process) In(portName string) *InPort {
 	if p._inPorts[portName] != nil {
 		return p._inPorts[portName]
@@ -91,10 +103,12 @@ func (p *Process) In(portName string) *InPort {
 	return nil
 }
 
+// SetInPort sets the sets the in-port field with name portName with a new port
 func (p *Process) SetInPort(portName string, port *InPort) {
 	p._inPorts[portName] = port
 }
 
+// InPorts returns all in-ports of the current Process
 func (p *Process) InPorts() []*InPort {
 	inPorts := []*InPort{}
 	for _, p := range p._inPorts {
@@ -107,6 +121,7 @@ func (p *Process) InPorts() []*InPort {
 // Out-port stuff
 // ------------------------------------------------
 
+// Out returns the out-port with name portName
 func (p *Process) Out(portName string) *OutPort {
 	if p._outPorts[portName] != nil {
 		return p._outPorts[portName]
@@ -116,10 +131,12 @@ func (p *Process) Out(portName string) *OutPort {
 	return nil
 }
 
+// SetOutPort sets the out-port field with name portName to a new port
 func (p *Process) SetOutPort(portName string, port *OutPort) {
 	p._outPorts[portName] = port
 }
 
+// OutPorts returns all out-ports of the current Process
 func (p *Process) OutPorts() []*OutPort {
 	outPorts := []*OutPort{}
 	for _, p := range p._outPorts {
@@ -132,21 +149,31 @@ func (p *Process) OutPorts() []*OutPort {
 // Param-port stuff
 // ------------------------------------------------
 
-func (p *Process) ParamPort(paramPortName string) *ParamPort {
-	if p.paramPorts[paramPortName] != nil {
-		return p.paramPorts[paramPortName]
+// ParamInPort returns the parameter in-port with name paramPortName
+func (p *Process) ParamInPort(paramPortName string) *ParamInPort {
+	if p.paramInPorts[paramPortName] != nil {
+		return p.paramInPorts[paramPortName]
 	} else {
 		Error.Fatalf("No such param-port ('%s') for process '%s'. Please check your workflow code!\n", paramPortName, p.name)
 	}
 	return nil
 }
 
-func (p *Process) GetParamPorts() map[string]*ParamPort {
-	return p.paramPorts
+// ParamInPorts returns all parameter in-ports for the current process
+func (p *Process) ParamInPorts() map[string]*ParamInPort {
+	return p.paramInPorts
 }
 
-func (p *Process) SetParamPort(paramPortName string, paramPort *ParamPort) {
-	p.paramPorts[paramPortName] = paramPort
+// ParamOutPorts returns all parameter in-ports for the current process (none,
+// for a normal "shell" process)
+func (p *Process) ParamOutPorts() map[string]*ParamOutPort {
+	return map[string]*ParamOutPort{} // None to return, for a standard "shell" process
+}
+
+// SetParamInPort sets the parameterInPort with name paramPortName to a new port
+// paramPort
+func (p *Process) SetParamInPort(paramPortName string, paramPort *ParamInPort) {
+	p.paramInPorts[paramPortName] = paramPort
 }
 
 // ------------------------------------------------
@@ -286,34 +313,35 @@ func (p *Process) initPortsFromCmdPattern(cmd string, params map[string]string) 
 			p._inPorts[name].Process = p
 		} else if typ == "p" {
 			if params == nil || params[name] == "" {
-				p.paramPorts[name] = NewParamPort()
+				p.paramInPorts[name] = NewParamInPort()
+				// Link the current process to param port
+				p.paramInPorts[name].Process = p
 			}
 		}
 	}
 }
 
-// ------- Sanity checks -------
-func (proc *Process) IsConnected() (isConnected bool) {
-	isConnected = true
+// IsConnected checks that there are no unconnected ports or parameter ports for the current process
+func (proc *Process) IsConnected() bool {
 	for portName, port := range proc._inPorts {
 		if !port.IsConnected() {
 			Error.Printf("InPort %s of process %s is not connected - check your workflow code!\n", portName, proc.name)
-			isConnected = false
+			return false
 		}
 	}
 	for portName, port := range proc._outPorts {
 		if !port.IsConnected() {
 			Error.Printf("OutPort %s of process %s is not connected - check your workflow code!\n", portName, proc.name)
-			isConnected = false
+			return false
 		}
 	}
-	for portName, port := range proc.paramPorts {
+	for portName, port := range proc.paramInPorts {
 		if !port.IsConnected() {
-			Error.Printf("ParamPort %s of process %s is not connected - check your workflow code!\n", portName, proc.name)
-			isConnected = false
+			Error.Printf("ParamInPort %s of process %s is not connected - check your workflow code!\n", portName, proc.name)
+			return false
 		}
 	}
-	return isConnected
+	return true
 }
 
 // ============== Process Run Method ===============
@@ -415,7 +443,7 @@ func (p *Process) receiveParams() (params map[string]string, paramPortsOpen bool
 	paramPortsOpen = true
 	params = make(map[string]string)
 	// Read input targets on in-ports and set up path mappings
-	for pname, pport := range p.paramPorts {
+	for pname, pport := range p.paramInPorts {
 		pval, open := <-pport.Chan
 		if !open {
 			paramPortsOpen = false
@@ -437,14 +465,14 @@ func (p *Process) createTasks() (ch chan *SciTask) {
 			params, paramPortsOpen := p.receiveParams()
 			Debug.Printf("Process.createTasks:%s Got params: %s", p.name, params)
 			if !inPortsOpen && !paramPortsOpen {
-				Debug.Printf("Process.createTasks:%s Breaking: Both inPorts and paramPorts closed", p.name)
+				Debug.Printf("Process.createTasks:%s Breaking: Both inPorts and paramInPorts closed", p.name)
 				break
 			}
 			if len(p._inPorts) == 0 && !paramPortsOpen {
 				Debug.Printf("Process.createTasks:%s Breaking: No inports, and params closed", p.name)
 				break
 			}
-			if len(p.paramPorts) == 0 && !inPortsOpen {
+			if len(p.paramInPorts) == 0 && !inPortsOpen {
 				Debug.Printf("Process.createTasks:%s Breaking: No params, and inPorts closed", p.name)
 				break
 			}
@@ -453,7 +481,7 @@ func (p *Process) createTasks() (ch chan *SciTask) {
 				t.CustomExecute = p.CustomExecute
 			}
 			ch <- t
-			if len(p._inPorts) == 0 && len(p.paramPorts) == 0 {
+			if len(p._inPorts) == 0 && len(p.paramInPorts) == 0 {
 				Debug.Printf("Process.createTasks:%s Breaking: No inports nor params", p.name)
 				break
 			}

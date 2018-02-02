@@ -3,15 +3,17 @@ package scipipe
 // Sink is a simple component that just receives IP on its In-port
 // without doing anything with them
 type Sink struct {
-	name   string
-	inPort *InPort
+	name         string
+	inPort       *InPort
+	paramInPorts map[string]*ParamInPort
 }
 
 // Instantiate a Sink component
 func NewSink(name string) (s *Sink) {
 	return &Sink{
-		name:   name,
-		inPort: NewInPort(),
+		name:         name,
+		inPort:       NewInPort(),
+		paramInPorts: map[string]*ParamInPort{},
 	}
 }
 
@@ -21,6 +23,14 @@ func (p *Sink) InPorts() []*InPort {
 
 func (p *Sink) OutPorts() []*OutPort {
 	return []*OutPort{}
+}
+
+func (p *Sink) ParamInPorts() map[string]*ParamInPort {
+	return p.paramInPorts
+}
+
+func (p *Sink) ParamOutPorts() map[string]*ParamOutPort {
+	return map[string]*ParamOutPort{}
 }
 
 func (p *Sink) IsConnected() bool {

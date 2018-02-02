@@ -39,6 +39,8 @@ func (localPort *InPort) Connect(remotePort *OutPort) {
 	remotePort.SetConnectedStatus(true)
 }
 
+// TODO: We need a disconnect method here as well
+
 func (pt *InPort) AddInChan(inChan chan *IP) {
 	pt.inChans = append(pt.inChans, inChan)
 }
@@ -101,6 +103,7 @@ func (localPort *OutPort) Connect(remotePort *InPort) {
 }
 
 func (port *OutPort) Disconnect() {
+	// TODO: Have to disconnect our channel from the remote port as well
 	port.outChans = []chan *IP{}
 	port.RemotePort = nil
 	port.SetConnectedStatus(false)
@@ -132,36 +135,50 @@ func (pt *OutPort) Close() {
 	}
 }
 
-// ParamPort
-type ParamPort struct {
-	Chan      chan string
-	connected bool
+// ParamInPort is an in-port for parameter values, of string type
+type ParamInPort struct {
+	inChans      []chan string
+	MergedInChan chan string
+	connected    bool
+	RemotePort   *ParamOutPort
+	Process      *Process
 }
 
-func NewParamPort() *ParamPort {
-	return &ParamPort{}
-}
-
-func (pp *ParamPort) Connect(otherParamPort *ParamPort) {
-	if pp.Chan != nil && otherParamPort.Chan != nil {
-		Error.Fatalln("Both paramports already have initialized channels, so can't choose which to use!")
-	} else if pp.Chan != nil && otherParamPort.Chan == nil {
-		Debug.Println("Local param port, but not the other one, initialized, so connecting local to other")
-		otherParamPort.Chan = pp.Chan
-	} else if otherParamPort.Chan != nil && pp.Chan == nil {
-		Debug.Println("The other, but not the local param port initialized, so connecting other to local")
-		pp.Chan = otherParamPort.Chan
-	} else if pp.Chan == nil && otherParamPort.Chan == nil {
-		Debug.Println("Neither local nor other param port initialized, so creating new channel and connecting both")
-		ch := make(chan string, BUFSIZE)
-		pp.Chan = ch
-		otherParamPort.Chan = ch
+// NewParamInPort returns a new parameter in-port
+func NewParamInPort() *ParamInPort {
+	return &ParamInPort{
+		inChans:      []chan string{},
+		MergedInChan: make(chan string),
 	}
-	pp.SetConnectedStatus(true)
-	otherParamPort.SetConnectedStatus(true)
 }
 
-func (pp *ParamPort) ConnectStr(strings ...string) {
+func (pp *ParamInPort) AddInChan(c chan string) {
+	pp.inChans = append(pp.inChans, c)
+}
+
+func (pp *ParamInPort) Connect(rpp *ParamOutPort) {
+	inBoundChan := make(chan string, BUFSIZE)
+
+	pp.AddInChan(inBoundChan)
+	rpp.AddOutChan(inBoundChan)
+
+	pp.RemotePort = rpp
+	rpp.RemotePort = pp
+
+	pp.SetConnectedStatus(true)
+	rpp.SetConnectedStatus(true)
+}
+
+func (pp *ParamInPort) Disconnect() {
+	pp.RemotePort.Chan = nil
+	pp.RemotePort.SetConnectedStatus(false)
+
+	pp.RemotePort = nil
+	pp.Chan = nil
+	pp.SetConnectedStatus(false)
+}
+
+func (pp *ParamInPort) ConnectStr(strings ...string) {
 	pp.Chan = make(chan string, BUFSIZE)
 	pp.SetConnectedStatus(true)
 	go func() {
@@ -172,22 +189,84 @@ func (pp *ParamPort) ConnectStr(strings ...string) {
 	}()
 }
 
-func (pp *ParamPort) SetConnectedStatus(connected bool) {
+func (pp *ParamInPort) SetConnectedStatus(connected bool) {
 	pp.connected = connected
 }
 
-func (pp *ParamPort) IsConnected() bool {
+func (pp *ParamInPort) IsConnected() bool {
 	return pp.connected
 }
 
-func (pp *ParamPort) Send(param string) {
-	pp.Chan <- param
-}
-
-func (pp *ParamPort) Recv() string {
+func (pp *ParamInPort) Recv() string {
 	return <-pp.Chan
 }
 
-func (pp *ParamPort) Close() {
+func (pp *ParamInPort) Close() {
+	close(pp.Chan)
+}
+
+// ParamOutPort is a parameter out-port, for sending parameters of string type
+type ParamOutPort struct {
+	outChans   []chan string
+	connected  bool
+	RemotePort *ParamInPort
+	Process    *Process
+}
+
+func NewParamOutPort() *ParamOutPort {
+	return &ParamOutPort{
+		outChans: []chan string{},
+	}
+}
+
+func (pp *ParamOutPort) AddOutChan(c chan string) {
+	pp.outChans = append(pp.outChans, c)
+}
+
+func (pp *ParamOutPort) Connect(rpp *ParamInPort) {
+	outBoundChan := make(chan string, BUFSIZE)
+	pp.AddOutChan(outBoundChan)
+	rpp.AddInChan(outBoundChan)
+
+	pp.RemotePort = rpp
+	rpp.RemotePort = pp
+
+	pp.SetConnectedStatus(true)
+	rpp.SetConnectedStatus(true)
+}
+
+func (pp *ParamOutPort) Disconnect() {
+	pp.RemotePort.Chan = nil
+	pp.RemotePort.SetConnectedStatus(false)
+
+	pp.RemotePort = nil
+	pp.Chan = nil
+	pp.SetConnectedStatus(false)
+}
+
+func (pp *ParamOutPort) ConnectStr(strings ...string) {
+	pp.Chan = make(chan string, BUFSIZE)
+	pp.SetConnectedStatus(true)
+	go func() {
+		defer pp.Close()
+		for _, str := range strings {
+			pp.Chan <- str
+		}
+	}()
+}
+
+func (pp *ParamOutPort) SetConnectedStatus(connected bool) {
+	pp.connected = connected
+}
+
+func (pp *ParamOutPort) IsConnected() bool {
+	return pp.connected
+}
+
+func (pp *ParamOutPort) Send(param string) {
+	pp.Chan <- param
+}
+
+func (pp *ParamOutPort) Close() {
 	close(pp.Chan)
 }
