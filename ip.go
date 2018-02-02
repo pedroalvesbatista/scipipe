@@ -273,6 +273,14 @@ func NewIPGen(workflow *Workflow, name string, filePaths ...string) (fq *IPGen) 
 	return
 }
 
+func (ipg *IPGen) InPorts() []*InPort {
+	return []*InPort{}
+}
+
+func (ipg *IPGen) OutPorts() []*OutPort {
+	return []*OutPort{ipg.Out}
+}
+
 // Execute the IPGen, returning instantiated IP
 func (ipg *IPGen) Run() {
 	defer ipg.Out.Close()

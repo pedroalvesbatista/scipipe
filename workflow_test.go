@@ -64,6 +64,14 @@ func (p *BogusProcess) Name() string {
 	return p.name
 }
 
+func (p *BogusProcess) InPorts() []*InPort {
+	return []*InPort{}
+}
+
+func (p *BogusProcess) OutPorts() []*OutPort {
+	return []*OutPort{}
+}
+
 func (p *BogusProcess) IsConnected() bool {
 	return true
 }

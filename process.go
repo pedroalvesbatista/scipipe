@@ -25,8 +25,8 @@ type Process struct {
 	ExecMode         ExecMode
 	Prepend          string
 	Spawn            bool
-	inPorts          map[string]*InPort
-	outPorts         map[string]*OutPort
+	_inPorts         map[string]*InPort
+	_outPorts        map[string]*OutPort
 	OutPortsDoStream map[string]bool
 	PathFormatters   map[string]func(*SciTask) string
 	paramPorts       map[string]*ParamPort
@@ -39,8 +39,8 @@ func NewProcess(workflow *Workflow, name string, command string) *Process {
 	p := &Process{
 		name:             name,
 		CommandPattern:   command,
-		inPorts:          make(map[string]*InPort),
-		outPorts:         make(map[string]*OutPort),
+		_inPorts:         make(map[string]*InPort),
+		_outPorts:        make(map[string]*OutPort),
 		OutPortsDoStream: make(map[string]bool),
 		PathFormatters:   make(map[string]func(*SciTask) string),
 		paramPorts:       make(map[string]*ParamPort),
@@ -83,8 +83,8 @@ func (p *Process) Name() string {
 // ------------------------------------------------
 
 func (p *Process) In(portName string) *InPort {
-	if p.inPorts[portName] != nil {
-		return p.inPorts[portName]
+	if p._inPorts[portName] != nil {
+		return p._inPorts[portName]
 	} else {
 		Error.Fatalf("No such in-port ('%s') for process '%s'. Please check your workflow code!\n", portName, p.name)
 	}
@@ -92,11 +92,15 @@ func (p *Process) In(portName string) *InPort {
 }
 
 func (p *Process) SetInPort(portName string, port *InPort) {
-	p.inPorts[portName] = port
+	p._inPorts[portName] = port
 }
 
-func (p *Process) InPorts() map[string]*InPort {
-	return p.inPorts
+func (p *Process) InPorts() []*InPort {
+	inPorts := []*InPort{}
+	for _, p := range p._inPorts {
+		inPorts = append(inPorts, p)
+	}
+	return inPorts
 }
 
 // ------------------------------------------------
@@ -104,8 +108,8 @@ func (p *Process) InPorts() map[string]*InPort {
 // ------------------------------------------------
 
 func (p *Process) Out(portName string) *OutPort {
-	if p.outPorts[portName] != nil {
-		return p.outPorts[portName]
+	if p._outPorts[portName] != nil {
+		return p._outPorts[portName]
 	} else {
 		Error.Fatalf("No such out-port ('%s') for process '%s'. Please check your workflow code!\n", portName, p.name)
 	}
@@ -113,11 +117,15 @@ func (p *Process) Out(portName string) *OutPort {
 }
 
 func (p *Process) SetOutPort(portName string, port *OutPort) {
-	p.outPorts[portName] = port
+	p._outPorts[portName] = port
 }
 
-func (p *Process) OutPorts() map[string]*OutPort {
-	return p.outPorts
+func (p *Process) OutPorts() []*OutPort {
+	outPorts := []*OutPort{}
+	for _, p := range p._outPorts {
+		outPorts = append(outPorts, p)
+	}
+	return outPorts
 }
 
 // ------------------------------------------------
@@ -261,9 +269,9 @@ func (p *Process) initPortsFromCmdPattern(cmd string, params map[string]string) 
 		typ := m[1]
 		name := m[2]
 		if typ == "o" || typ == "os" {
-			p.outPorts[name] = NewOutPort()
+			p._outPorts[name] = NewOutPort()
 			// Link the current process to port
-			p.outPorts[name].Process = p
+			p._outPorts[name].Process = p
 			if typ == "os" {
 				p.OutPortsDoStream[name] = true
 			}
@@ -273,9 +281,9 @@ func (p *Process) initPortsFromCmdPattern(cmd string, params map[string]string) 
 			// It might be nice to have it init'ed with a channel
 			// anyways, for use cases when we want to send IP
 			// on the inport manually.
-			p.inPorts[name] = NewInPort()
+			p._inPorts[name] = NewInPort()
 			// Link the current process to port
-			p.inPorts[name].Process = p
+			p._inPorts[name].Process = p
 		} else if typ == "p" {
 			if params == nil || params[name] == "" {
 				p.paramPorts[name] = NewParamPort()
@@ -287,13 +295,13 @@ func (p *Process) initPortsFromCmdPattern(cmd string, params map[string]string) 
 // ------- Sanity checks -------
 func (proc *Process) IsConnected() (isConnected bool) {
 	isConnected = true
-	for portName, port := range proc.inPorts {
+	for portName, port := range proc._inPorts {
 		if !port.IsConnected() {
 			Error.Printf("InPort %s of process %s is not connected - check your workflow code!\n", portName, proc.name)
 			isConnected = false
 		}
 	}
-	for portName, port := range proc.outPorts {
+	for portName, port := range proc._outPorts {
 		if !port.IsConnected() {
 			Error.Printf("OutPort %s of process %s is not connected - check your workflow code!\n", portName, proc.name)
 			isConnected = false
@@ -390,7 +398,7 @@ func (p *Process) receiveInputs() (inTargets map[string]*IP, inPortsOpen bool) {
 	inPortsOpen = true
 	inTargets = make(map[string]*IP)
 	// Read input targets on in-ports and set up path mappings
-	for inpName, inPort := range p.inPorts {
+	for inpName, inPort := range p._inPorts {
 		Debug.Printf("Process %s: Receieving on inPort %s ...", p.name, inpName)
 		inTarget, open := <-inPort.MergedInChan
 		if !open {
@@ -432,7 +440,7 @@ func (p *Process) createTasks() (ch chan *SciTask) {
 				Debug.Printf("Process.createTasks:%s Breaking: Both inPorts and paramPorts closed", p.name)
 				break
 			}
-			if len(p.inPorts) == 0 && !paramPortsOpen {
+			if len(p._inPorts) == 0 && !paramPortsOpen {
 				Debug.Printf("Process.createTasks:%s Breaking: No inports, and params closed", p.name)
 				break
 			}
@@ -445,7 +453,7 @@ func (p *Process) createTasks() (ch chan *SciTask) {
 				t.CustomExecute = p.CustomExecute
 			}
 			ch <- t
-			if len(p.inPorts) == 0 && len(p.paramPorts) == 0 {
+			if len(p._inPorts) == 0 && len(p.paramPorts) == 0 {
 				Debug.Printf("Process.createTasks:%s Breaking: No inports nor params", p.name)
 				break
 			}
@@ -456,7 +464,7 @@ func (p *Process) createTasks() (ch chan *SciTask) {
 }
 
 func (p *Process) closeOutPorts() {
-	for oname, oport := range p.outPorts {
+	for oname, oport := range p._outPorts {
 		Debug.Printf("Process %s: Closing port(s) %s ...\n", p.name, oname)
 		oport.Close()
 	}

@@ -40,6 +40,8 @@ func NewWorkflow(name string, maxConcurrentTasks int) *Workflow {
 // Workflow component requires.
 type WorkflowProcess interface {
 	Name() string
+	InPorts() []*InPort
+	OutPorts() []*OutPort
 	IsConnected() bool
 	Run()
 }
