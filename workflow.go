@@ -116,8 +116,10 @@ func (wf *Workflow) DecConcurrentTasks(slots int) {
 // an implicit sink process which will be used to drive the workflow. This can
 // be used instead of manually creating a sink, connecting it, and setting it
 // as the driver process of the workflow.
-func (wf *Workflow) ConnectLast(outPort *OutPort) {
-	wf.sink.Connect(outPort)
+func (wf *Workflow) ConnectLast(outPorts ...*OutPort) {
+	for _, outPort := range outPorts {
+		wf.sink.Connect(outPort)
+	}
 	// Make sure the sink is also the driver
 	wf.driver = wf.sink
 }
@@ -140,27 +142,49 @@ func (wf *Workflow) readyToRun(procs ...WorkflowProcess) bool {
 	return true
 }
 
-func (wf *Workflow) RunProcs(driverProc WorkflowProcess, procs ...WorkflowProcess) {
+func (wf *Workflow) RunProcs(procs ...WorkflowProcess) {
+	// Go through all the processes we are to run, and disconnect any outports
+	// connected to processes that are not supposed to run, and connect those ports
+	// to the workflow sink instead. Also, connect all unconnected outports among
+	// the processes we *are* to run, to the workflow sink.
+	for _, proc := range procs {
+		for _, outPort := range proc.OutPorts() {
+			if outPort != nil && outPort.RemotePort != nil {
+				remoteProc := outPort.RemotePort.Process
+				if remoteProc != nil {
+					if !inProcs(remoteProc, procs) {
+						// Disconnect any ports that are connected to processes that will not run0
+						outPort.Disconnect()
+						wf.ConnectLast(outPort)
+					} else {
+						// Connect any unconnected ports also among the processes that are supposed to run
+						for _, port := range remoteProc.OutPorts() {
+							if !port.IsConnected() {
+								wf.ConnectLast(port)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 	if !wf.readyToRun(procs...) {
 		Error.Fatalln("Workflow not ready to run, due to previously reported errors, so exiting.")
 	}
 	for _, proc := range procs {
-		if proc != driverProc { // Don't start the driver process in background
-			Debug.Printf(wf.name+": Starting process %s in new go-routine", proc.Name())
-			go proc.Run()
-		}
+		Debug.Printf(wf.name+": Starting process %s in new go-routine", proc.Name())
+		go proc.Run()
 	}
 	Debug.Printf(wf.name + ": Starting sink in main go-routine")
-	driverProc.Run()
+	wf.sink.Run()
 }
 
-func (wf *Workflow) RunProcsByName(driverProcName string, procNames ...string) {
+func (wf *Workflow) RunProcsByName(procNames ...string) {
 	procs := []WorkflowProcess{}
 	for _, procName := range procNames {
 		procs = append(procs, wf.Proc(procName))
 	}
-	driverProc := wf.Proc(driverProcName)
-	wf.RunProcs(driverProc, procs...)
+	wf.RunProcs(procs...)
 }
 
 func (wf *Workflow) Run() {
@@ -168,5 +192,14 @@ func (wf *Workflow) Run() {
 	for _, p := range wf.procs {
 		procs = append(procs, p)
 	}
-	wf.RunProcs(wf.driver, procs...)
+	wf.RunProcs(procs...)
+}
+
+func inProcs(p WorkflowProcess, procs []WorkflowProcess) bool {
+	for _, proc := range procs {
+		if p == proc {
+			return true
+		}
+	}
+	return false
 }
