@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	sp "github.com/scipipe/scipipe"
 	"math"
 	"runtime"
 	"strings"
+
+	sp "github.com/scipipe/scipipe"
 )
 
 const (
@@ -60,6 +61,14 @@ func (proc *hiSayer) Name() string {
 	return proc.name
 }
 
+func (p *hiSayer) InPorts() []*sp.InPort {
+	return []*sp.InPort{}
+}
+
+func (p *hiSayer) OutPorts() []*sp.OutPort {
+	return []*sp.OutPort{}
+}
+
 func (proc *hiSayer) Run() {
 	defer close(proc.Out)
 	for i := 1; i <= 1e3; i++ {
@@ -85,6 +94,15 @@ func NewStringSplitter(name string) *stringSplitter {
 		OutRight: make(chan string, BUFSIZE),
 	}
 }
+
+func (p *stringSplitter) InPorts() []*sp.InPort {
+	return []*sp.InPort{}
+}
+
+func (p *stringSplitter) OutPorts() []*sp.OutPort {
+	return []*sp.OutPort{}
+}
+
 func (proc *stringSplitter) Name() string {
 	return proc.name
 }
@@ -112,6 +130,15 @@ type lowerCaser struct {
 func NewLowerCaser(name string) *lowerCaser {
 	return &lowerCaser{name: name, Out: make(chan string, BUFSIZE)}
 }
+
+func (p *lowerCaser) InPorts() []*sp.InPort {
+	return []*sp.InPort{}
+}
+
+func (p *lowerCaser) OutPorts() []*sp.OutPort {
+	return []*sp.OutPort{}
+}
+
 func (proc *lowerCaser) Name() string {
 	return proc.name
 }
@@ -136,6 +163,15 @@ type upperCaser struct {
 func NewUpperCaser(name string) *upperCaser {
 	return &upperCaser{name: name, Out: make(chan string, BUFSIZE)}
 }
+
+func (p *upperCaser) InPorts() []*sp.InPort {
+	return []*sp.InPort{}
+}
+
+func (p *upperCaser) OutPorts() []*sp.OutPort {
+	return []*sp.OutPort{}
+}
+
 func (proc *upperCaser) Name() string {
 	return proc.name
 }
@@ -161,6 +197,15 @@ type zipper struct {
 func NewZipper(name string) *zipper {
 	return &zipper{name: name, Out: make(chan string, BUFSIZE)}
 }
+
+func (p *zipper) InPorts() []*sp.InPort {
+	return []*sp.InPort{}
+}
+
+func (p *zipper) OutPorts() []*sp.OutPort {
+	return []*sp.OutPort{}
+}
+
 func (proc *zipper) Name() string {
 	return proc.name
 }
@@ -189,6 +234,15 @@ type printer struct {
 func NewPrinter(name string) *printer {
 	return &printer{name: name}
 }
+
+func (p *printer) InPorts() []*sp.InPort {
+	return []*sp.InPort{}
+}
+
+func (p *printer) OutPorts() []*sp.OutPort {
+	return []*sp.OutPort{}
+}
+
 func (proc *printer) Name() string {
 	return proc.name
 }

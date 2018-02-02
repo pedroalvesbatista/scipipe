@@ -48,6 +48,14 @@ func NewFileSender(name string) *FileSender {
 	}
 }
 
+func (p *FileSender) InPorts() []*sci.InPort {
+	return []*sci.InPort{}
+}
+
+func (p *FileSender) OutPorts() []*sci.OutPort {
+	return []*sci.OutPort{}
+}
+
 func (p *FileSender) Run() {
 	defer p.Out.Close()
 	for _, fn := range []string{"file1.txt", "file2.txt", "file3.txt"} {

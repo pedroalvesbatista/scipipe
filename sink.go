@@ -15,6 +15,14 @@ func NewSink(name string) (s *Sink) {
 	}
 }
 
+func (p *Sink) InPorts() []*InPort {
+	return []*InPort{p.inPort}
+}
+
+func (p *Sink) OutPorts() []*OutPort {
+	return []*OutPort{}
+}
+
 func (p *Sink) IsConnected() bool {
 	return p.inPort.IsConnected()
 }

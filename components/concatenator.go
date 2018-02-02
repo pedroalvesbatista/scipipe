@@ -26,6 +26,14 @@ func (proc *Concatenator) Name() string {
 	return proc.name
 }
 
+func (proc *Concatenator) InPorts() []*scipipe.InPort {
+	return []*scipipe.InPort{proc.In}
+}
+
+func (proc *Concatenator) OutPorts() []*scipipe.OutPort {
+	return []*scipipe.OutPort{proc.Out}
+}
+
 func (proc *Concatenator) Run() {
 	defer proc.Out.Close()
 	go proc.In.RunMergeInputs()

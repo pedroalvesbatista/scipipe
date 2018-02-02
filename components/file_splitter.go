@@ -32,6 +32,14 @@ func (proc *FileSplitter) Name() string {
 	return proc.name
 }
 
+func (p *FileSplitter) InPorts() []*scipipe.InPort {
+	return []*scipipe.InPort{p.InFile}
+}
+
+func (p *FileSplitter) OutPorts() []*scipipe.OutPort {
+	return []*scipipe.OutPort{p.OutSplitFile}
+}
+
 func (proc *FileSplitter) Run() {
 	defer proc.OutSplitFile.Close()
 	go proc.InFile.RunMergeInputs()

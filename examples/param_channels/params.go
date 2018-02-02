@@ -56,6 +56,14 @@ func NewCombinatoricsGen(name string) *CombinatoricsGen {
 	}
 }
 
+func (p *CombinatoricsGen) InPorts() []*sci.InPort {
+	return []*sci.InPort{}
+}
+
+func (p *CombinatoricsGen) OutPorts() []*sci.OutPort {
+	return []*sci.OutPort{}
+}
+
 func (p *CombinatoricsGen) Name() string {
 	return p.name
 }

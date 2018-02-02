@@ -25,6 +25,14 @@ func (proc *StringGen) Name() string {
 	return proc.name
 }
 
+func (p *StringGen) InPorts() []*scipipe.InPort {
+	return []*scipipe.InPort{}
+}
+
+func (p *StringGen) OutPorts() []*scipipe.OutPort {
+	return []*scipipe.OutPort{} // Now normal out-ports
+}
+
 // Run the StringGen
 func (proc *StringGen) Run() {
 	defer proc.Out.Close()

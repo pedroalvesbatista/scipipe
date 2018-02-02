@@ -30,6 +30,14 @@ func (p *IpToParamConverter) Name() string {
 	return p.name
 }
 
+func (p *IpToParamConverter) InPorts() []*scipipe.InPort {
+	return []*scipipe.InPort{p.InFile}
+}
+
+func (p *IpToParamConverter) OutPorts() []*scipipe.OutPort {
+	return []*scipipe.OutPort{} // No normal out-ports
+}
+
 func (p *IpToParamConverter) IsConnected() bool {
 	return p.InFile.IsConnected() && p.OutParam.IsConnected()
 }

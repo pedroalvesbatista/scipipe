@@ -41,6 +41,14 @@ func NewFileWriterFromPath(wf *scipipe.Workflow, path string) *FileWriter {
 	return fw
 }
 
+func (p *FileWriter) InPorts() []*scipipe.InPort {
+	return []*scipipe.InPort{}
+}
+
+func (p *FileWriter) OutPorts() []*scipipe.OutPort {
+	return []*scipipe.OutPort{}
+}
+
 func (proc *FileWriter) Run() {
 	f, err := os.Create(<-proc.FilePath)
 	if err != nil {

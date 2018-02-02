@@ -26,6 +26,14 @@ func (p *MapToKeys) Name() string {
 	return p.procName
 }
 
+func (p *MapToKeys) InPorts() []*scipipe.InPort {
+	return []*scipipe.InPort{p.In}
+}
+
+func (p *MapToKeys) OutPorts() []*scipipe.OutPort {
+	return []*scipipe.OutPort{p.Out}
+}
+
 func (p *MapToKeys) IsConnected() bool {
 	return p.In.IsConnected() && p.Out.IsConnected()
 }

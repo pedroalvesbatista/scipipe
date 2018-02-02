@@ -26,6 +26,14 @@ func NewFileGlobber(wf *scipipe.Workflow, name string, globPattern string) *File
 	return fg
 }
 
+func (p *FileGlobber) InPorts() []*scipipe.InPort {
+	return []*scipipe.InPort{}
+}
+
+func (p *FileGlobber) OutPorts() []*scipipe.OutPort {
+	return []*scipipe.OutPort{p.Out}
+}
+
 func (p *FileGlobber) Run() {
 	defer p.Out.Close()
 

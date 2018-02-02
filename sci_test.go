@@ -427,6 +427,14 @@ func (proc *CombinatoricsProcess) Name() string {
 	return proc.name
 }
 
+func (proc *CombinatoricsProcess) InPorts() []*InPort {
+	return []*InPort{}
+}
+
+func (proc *CombinatoricsProcess) OutPorts() []*OutPort {
+	return []*OutPort{}
+}
+
 func (proc *CombinatoricsProcess) IsConnected() bool { return true }
 
 // --------------------------------------------------------------------------------
@@ -458,6 +466,14 @@ func (proc *StreamToSubStream) Name() string {
 	return "StreamToSubstream"
 }
 
+func (proc *StreamToSubStream) InPorts() []*InPort {
+	return []*InPort{proc.In}
+}
+
+func (proc *StreamToSubStream) OutPorts() []*OutPort {
+	return []*OutPort{proc.OutSubStream}
+}
+
 func (proc *StreamToSubStream) IsConnected() bool {
 	return proc.In.IsConnected() && proc.OutSubStream.IsConnected()
 }
@@ -485,6 +501,14 @@ func NewMapToKeys(wf *Workflow, name string, mapFunc func(ip *IP) map[string]str
 
 func (p *MapToKeys) Name() string {
 	return p.procName
+}
+
+func (proc *MapToKeys) InPorts() []*InPort {
+	return []*InPort{proc.In}
+}
+
+func (proc *MapToKeys) OutPorts() []*OutPort {
+	return []*OutPort{proc.Out}
 }
 
 func (p *MapToKeys) IsConnected() bool {
