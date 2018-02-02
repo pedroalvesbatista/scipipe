@@ -100,6 +100,12 @@ func (localPort *OutPort) Connect(remotePort *InPort) {
 	remotePort.SetConnectedStatus(true)
 }
 
+func (port *OutPort) Disconnect() {
+	port.outChans = []chan *IP{}
+	port.RemotePort = nil
+	port.SetConnectedStatus(false)
+}
+
 func (pt *OutPort) AddOutChan(outChan chan *IP) {
 	pt.outChans = append(pt.outChans, outChan)
 }
